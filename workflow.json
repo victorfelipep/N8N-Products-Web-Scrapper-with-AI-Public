@@ -1,0 +1,334 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "=https://r.jina.ai/{{ $json['Input the website link to be scrapped (https://...)'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "366d240e-03c3-45e7-a107-562ec7cdb8d8",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "formTitle": "Web link",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Input the website link to be scrapped (https://...)",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        176,
+        0
+      ],
+      "id": "9e236730-786e-45f4-8f6d-45df94fe9443",
+      "name": "On form submission",
+      "webhookId": "dd44c696-4b7d-4e44-808b-479355789e57"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You'll receive in markdown a webscrapped product page from a website. I want you to retrieve a JSON with product_name, price and category.\n\nRetrieve all the possible items.\n\n\nRemember: You have to retrieve the JSON and nothing more.\n\nIn case of not having data or error message: Only retrieve: Error fetching data\n\nData:  {{ $json.data }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        688,
+        0
+      ],
+      "id": "b8f6b482-046e-4596-b03d-076f0cb76d1b",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        224
+      ],
+      "id": "973a3c2d-7e07-46ea-a99e-5cdcf771bbcc",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ErE2OFQT1PuoQI6m",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\nimport re\n\nraw_text = items[0][\"json\"][\"output\"]\n\nclean_text = re.sub(r\"^```json|```$\", \"\", raw_text.strip(), flags=re.MULTILINE).strip()\n\ntry:\n    parsed = json.loads(clean_text)\nexcept json.JSONDecodeError:\n    parsed = {\"error\": \"Invalid JSON\", \"raw\": clean_text}\n\noutput = []\nif isinstance(parsed, list):\n    for entry in parsed:\n        if isinstance(entry, dict):\n            output.append({\"json\": entry})\n        else:\n            output.append({\"json\": {\"value\": entry}})\nelse:\n    output.append({\"json\": parsed})\n\nreturn output"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "30034922-f5ee-4f45-8f9f-c0c740d419fe",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "product page webscrapper",
+          "mode": "list",
+          "cachedResultName": "product page webscrapper"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "created_at": "={{ $now }}",
+            "product_name": "={{ $json.product_name }}",
+            "price": "={{ $json.price }}",
+            "category": "={{ $json.category }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "product_name",
+              "displayName": "product_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "price",
+              "displayName": "price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "18353b01-e110-4e69-8239-1810226023df",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "yAI7IEwbDX2kcncW",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Receive a URL from user by Form trigger.",
+        "height": 256,
+        "width": 256
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        96,
+        -64
+      ],
+      "typeVersion": 1,
+      "id": "69c2e3c6-88f7-4fa8-9a55-4bc2aafb3aa7",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Send a HTTP Request to jina.ai scrapper to scrap the product page.",
+        "height": 256,
+        "width": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        368,
+        -64
+      ],
+      "typeVersion": 1,
+      "id": "f2d22b8a-3f37-41d9-8e53-103e06724e43",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "OpenAI AI Agent will receive the raw data and transform in JSON, in case of error it will reply that was an error.",
+        "height": 288,
+        "width": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        656,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "8d1320e7-a887-4065-b594-be2e417419b0",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Python code to cleanse unnecessary characters and format JSON",
+        "height": 288
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        976,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "0510d4d8-899b-4e8c-b915-f7c489495354",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "Save on Database",
+        "height": 272,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1232,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "cb6327f7-e89d-4679-9946-b8464f047f3a",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a6d8f151-f99d-4b07-8080-4db94acb4711",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d2d38cf04bb677cc56492c7abe2b3c34b87143ad46dc5b44711a8a0321e49149"
+  },
+  "id": "NhARFywMQl5VsYPN",
+  "tags": []
+}
